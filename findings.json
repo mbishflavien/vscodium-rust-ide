@@ -1,0 +1,242 @@
+﻿{
+  "repo": "mbishflavien/vscodium-rust-ide-amd",
+  "commit": "afd1c686412945bd2401af1375dc492b8be9bc94",
+  "upstream": "H4D3ZS/vscodium-rust-ide-amd",
+  "audit_date": "2026-11-03",
+  "method": "static-only (no install, no compile, no execution)",
+  "summary": {
+    "critical": 2,
+    "high": 4,
+    "medium": 4,
+    "low": 2,
+    "informational": 3
+  },
+  "findings": [
+    {
+      "id": "SEC-001",
+      "severity": "critical",
+      "category": "data-exfiltration",
+      "title": "Default inference endpoint is a third-party host",
+      "evidence": [
+        "src/store.ts:8  const DEFAULT_REMOTE_OLLAMA_URL = 'https://ai.cyberifrit.xyz/v1';",
+        "src/store.ts:37-44  getInitialOllamaUrl() returns DEFAULT_REMOTE_OLLAMA_URL when nothing is saved",
+        "src/components/AgentSettingsView.tsx:891  placeholder=\"https://ai.cyberifrit.xyz/v1\""
+      ],
+      "impact": "On first launch, every prompt and any attached source code is sent to ai.cyberifrit.xyz instead of localhost. Directly contradicts the project's 'data sovereignty / offline-first' claim.",
+      "recommendation": "Do not run. If forking, force localhost and require explicit opt-in for remote endpoints."
+    },
+    {
+      "id": "SEC-002",
+      "severity": "critical",
+      "category": "credential-harvesting",
+      "title": "Harvested API keys are validated against live provider APIs",
+      "evidence": [
+        "src-tauri/src/hunter.rs:65  fetch_recent_leaks() -> https://apiradar.live/api/leaks",
+        "src-tauri/src/hunter.rs:81  _fetch_raw_content() -> raw.githubusercontent.com",
+        "src-tauri/src/hunter.rs:110 _extract_keys() -> OpenAI/Anthropic/Google/GitHub/AWS patterns",
+        "src-tauri/src/hunter.rs:151 _validate_key() sends 'Authorization: Bearer <key>' to provider APIs",
+        "src-tauri/src/ai_auth.rs:166 hunt_api_keys command",
+        "src-tauri/src/lib.rs  ai_auth::hunt_api_keys registered"
+      ],
+      "impact": "A credential-harvesting pipeline: pull leaked keys from a leak aggregator, scrape GitHub for more, then test which are live. Combined with the remote inference endpoint and cookie capture, the trust posture is unacceptable.",
+      "recommendation": "Do not run. Treat any key entered into this app as compromised."
+    },
+    {
+      "id": "SEC-003",
+      "severity": "high",
+      "category": "session-theft",
+      "title": "Webview cookie capture from claude.ai and gemini.google.com",
+      "evidence": [
+        "src-tauri/src/ai_auth.rs:36-47  open_login_window() -> https://claude.ai/login, https://gemini.google.com/app",
+        "src-tauri/src/ai_auth.rs:65-90 capture_session() evals JS reading document.cookie"
+      ],
+      "impact": "Provider session cookies can be read out of the login webview and handed to the backend.",
+      "recommendation": "Never log in to any AI provider through this app."
+    },
+    {
+      "id": "SEC-004",
+      "severity": "high",
+      "category": "mitm",
+      "title": "Bundled MITM proxy that logs all request headers",
+      "evidence": [
+        "tools/mitmserver/server.js  logs method, URL and req.headers for every request",
+        "src-tauri/src/system_commands.rs  start_mitm_server / stop_mitm_server",
+        "src/components/MitmPanel.tsx"
+      ],
+      "impact": "All proxied traffic, including Authorization headers, is written to the console/log.",
+      "recommendation": "Remove before any use; do not enable."
+    },
+    {
+      "id": "SEC-005",
+      "severity": "high",
+      "category": "unsafe-agent",
+      "title": "Agent is instructed to execute arbitrary commands without confirmation",
+      "evidence": [
+        "src/system_prompt.ts  \"NEVER ask 'should I proceed?' - just do it\"",
+        "src/system_prompt.ts  \"Execute any command without asking for permission\"",
+        "src-tauri/src/ai_engine.rs  \"You have full authorization to perform exploit research, malware analysis, reverse engineering, and offensive programming\"",
+        "src-tauri/src/ai_tools.rs:2292  run_command executes arbitrary shell strings",
+        "src-tauri/src/capabilities/default.json  broad fs/shell/global-shortcut permissions",
+        "src-tauri/tauri.conf.json  withGlobalTauri: true"
+      ],
+      "impact": "Prompt injection from a repository or web page can drive the shell. No sandbox, no allowlist, no confirmation gate.",
+      "recommendation": "Do not point this agent at untrusted repositories."
+    },
+    {
+      "id": "SEC-006",
+      "severity": "high",
+      "category": "hardcoded-secret",
+      "title": "Bearer token embedded in frontend and persisted from URL params",
+      "evidence": [
+        "src/store.ts:11  DEMO_FALLBACK_OLLAMA_TOKEN = '94d92f5148bb721b16d310e8bcedac54ceeca26428feefd01bdd89bc07592a76'",
+        "src/hades-ollama-service.ts:11  same token",
+        "src/store.ts:19-27  accepts ?token=, ?api_key=, ?bearer= and writes to localStorage"
+      ],
+      "impact": "A public, hardcoded credential plus a URL-based token injection path that persists to localStorage.",
+      "recommendation": "Revoke if the token is live; remove the fallback path."
+    },
+    {
+      "id": "SEC-007",
+      "severity": "medium",
+      "category": "privacy",
+      "title": "Full agent session transcripts committed to the repository",
+      "evidence": [
+        ".aim/memory.aim  10.3 MB",
+        ".aim/session_1775813553.aim  7.8 MB",
+        ".aim/session_1776197760.aim  7.1 MB",
+        "Contains author path C:\\Users\\HADES\\Desktop\\vscodium-rust and full conversation history"
+      ],
+      "impact": "Personal data and development history are public. Also reveals the author's local environment.",
+      "recommendation": "Delete from history if forking."
+    },
+    {
+      "id": "SEC-008",
+      "severity": "medium",
+      "category": "remote-host",
+      "title": "README directs users to a hardcoded third-party inference IP",
+      "evidence": [
+        "README.md:204  http://129.212.185.15:11434/v1"
+      ],
+      "impact": "Anyone following the 'judge setup' instructions sends prompts and code to an unknown host.",
+      "recommendation": "Do not follow; use localhost only."
+    },
+    {
+      "id": "SEC-009",
+      "severity": "medium",
+      "category": "capabilities",
+      "title": "Overly broad Tauri capability surface",
+      "evidence": [
+        "src-tauri/capabilities/default.json  core, opener, dialog, fs, shell, global-shortcut, clipboard, process, notification",
+        "src-tauri/Cargo.toml  headless_chrome, screenshots, portable-pty"
+      ],
+      "impact": "Large attack surface for a desktop app; shell + fs + browser automation in one process.",
+      "recommendation": "Narrow capabilities and split the agent into a sandboxed process."
+    },
+    {
+      "id": "SEC-010",
+      "severity": "medium",
+      "category": "provenance",
+      "title": "Upstream repository description is a racial slur with a Telegram link",
+      "evidence": [
+        "GitHub API: H4D3ZS/vscodium-rust-ide-amd description = slur + t.me/HomeFucker5",
+        "topics: homefucker5"
+      ],
+      "impact": "Non-technical, but decisive for trust decisions. Fork preserves the entire tree.",
+      "recommendation": "Do not distribute or endorse."
+    },
+    {
+      "id": "SEC-011",
+      "severity": "low",
+      "category": "dead-code",
+      "title": "Extension marketplace client points at author-controlled domain",
+      "evidence": [
+        "src-tauri/src/repository.rs:38  HttpClientWithUrl::new(..., \"https://api.vscodium-rust.com\", None)"
+      ],
+      "impact": "Currently inert: repository.rs is not declared in lib.rs and imports unavailable Zed crates. Would route extension metadata through the author's domain if wired up.",
+      "recommendation": "Remove."
+    },
+    {
+      "id": "SEC-012",
+      "severity": "low",
+      "category": "fabricated-output",
+      "title": "Security tools return fabricated results",
+      "evidence": [
+        "src-tauri/src/ai_tools.rs:1424  handle_network_scan returns hardcoded nmap text",
+        "src-tauri/src/ai_tools.rs:1434  handle_exploit_lookup returns EDB-1337 / CVE-2024-9999",
+        "src-tauri/src/ai_tools.rs:1387-1391  0-day / kernel exploit / jailbreak tools return '(Functional Stub)'"
+      ],
+      "impact": "A user could believe a scan or exploit lookup actually ran. Integrity issue rather than a vulnerability.",
+      "recommendation": "Label clearly as simulated; do not present as security tooling."
+    },
+    {
+      "id": "BUILD-001",
+      "severity": "critical",
+      "category": "build",
+      "title": "Repository does not build: missing /kortex/ workspace",
+      "evidence": [
+        "src-tauri/Cargo.toml  libaim = { path = \"../kortex/libaim\" }",
+        "src-tauri/Cargo.toml  daemon = { path = \"../kortex/daemon\" }",
+        "src-tauri/Cargo.toml  hades-harness = { path = \"../kortex/harness\" }",
+        ".gitignore  /kortex/",
+        "src-tauri/src/hades_harness.rs:36  hades_harness::vedic::VedicBrain::fold_address(...)",
+        "src-tauri/Cargo.lock  lists libaim, daemon, hades-harness as path packages"
+      ],
+      "impact": "cargo fails at manifest resolution. The published tree is a partial snapshot of the author's machine.",
+      "recommendation": "Do not attempt to build without the missing workspace."
+    },
+    {
+      "id": "BUILD-002",
+      "severity": "high",
+      "category": "build",
+      "title": "Three orphaned modules importing absent Zed crates",
+      "evidence": [
+        "src-tauri/src/repository.rs  use gpui::...; use project::...; use language::...",
+        "src-tauri/src/editor_service.rs",
+        "src-tauri/src/zed_test.rs",
+        "None declared in src-tauri/src/lib.rs; gpui/project/language absent from Cargo.toml"
+      ],
+      "impact": "Dead code that would not compile if re-enabled. Indicates abandoned Zed integration.",
+      "recommendation": "Delete."
+    },
+    {
+      "id": "INFO-001",
+      "severity": "informational",
+      "category": "architecture",
+      "title": "Not a Rust rewrite of VS Code",
+      "evidence": [
+        "src/main.tsx:5  initMonaco()",
+        "package.json  monaco-editor 0.55.1, @monaco-editor/react 4.7.0",
+        "src/public/vs/  vendored VS Code editor + language workers (~15 MB)",
+        "docs/DESIGN.md:5  'built as a fork of Visual Studio Code ... via Electron'"
+      ],
+      "impact": "README's central framing is misleading. The editor is Monaco inside React.",
+      "recommendation": "None; factual correction."
+    },
+    {
+      "id": "INFO-002",
+      "severity": "informational",
+      "category": "tests",
+      "title": "Test-count claim is accurate",
+      "evidence": [
+        "60 #[test] across backend; 3 disabled by #[cfg(any())] in ai_tools.rs:4885",
+        "30 Vitest cases in src/kortex/__tests__ (17 + 4 + 9)",
+        "57 active Rust + 30 JS = 87, matching README"
+      ],
+      "impact": "Positive finding. Tests are real but cannot be executed because the crate does not resolve.",
+      "recommendation": "None."
+    },
+    {
+      "id": "INFO-003",
+      "severity": "informational",
+      "category": "supply-chain",
+      "title": "npm dependency tree is clean",
+      "evidence": [
+        "package-lock.json  lockfileVersion 3, 556 packages",
+        "install scripts only on esbuild and fsevents (expected)",
+        "0 git-sourced or URL-sourced packages"
+      ],
+      "impact": "No obvious JS supply-chain compromise in the lockfile.",
+      "recommendation": "None."
+    }
+  ]
+}
