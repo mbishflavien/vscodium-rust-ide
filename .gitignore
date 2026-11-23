@@ -11,6 +11,9 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
 # Anchored to the repo root so it ignores the legacy top-level kortex/ workspace
 # but does NOT touch src/kortex/ (the new Kortex inference frontend orchestrators).
 /kortex/

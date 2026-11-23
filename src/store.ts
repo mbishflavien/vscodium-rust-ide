@@ -8,7 +8,7 @@ import { initTheme } from './theme_engine';
 const DEFAULT_REMOTE_OLLAMA_URL = 'https://ai.cyberifrit.xyz/v1';
 const LOCAL_PROXY_URL = 'http://localhost:1536';
 const LOCAL_DIRECT_URL = 'http://localhost:11434';
-const DEMO_FALLBACK_OLLAMA_TOKEN = '94d92f5148bb721b16d310e8bcedac54ceeca26428feefd01bdd89bc07592a76';
+const DEMO_FALLBACK_OLLAMA_TOKEN = import.meta.env.VITE_DEMO_FALLBACK_OLLAMA_TOKEN || '';
 
 function getOllamaAuthHeader(baseUrl?: string): Record<string, string> {
     try {

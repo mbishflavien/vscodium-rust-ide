@@ -8,9 +8,7 @@ import { useStore } from './store';
 import { invoke } from './tauri_bridge';
 import { routePrompt, recordRequest, type RoutingResult } from './kortex/ccet';
 
-const DEMO_FALLBACK_OLLAMA_TOKEN = '94d92f5148bb721b16d310e8bcedac54ceeca26428feefd01bdd89bc07592a76';
-
-const DEMO_FALLBACK_OLLAMA_TOKEN = '94d92f5148bb721b16d310e8bcedac54ceeca26428feefd01bdd89bc07592a76';
+const DEMO_FALLBACK_OLLAMA_TOKEN = import.meta.env.VITE_DEMO_FALLBACK_OLLAMA_TOKEN || '';
 
 export interface HadesOllamaConfig {
   baseUrl: string;
