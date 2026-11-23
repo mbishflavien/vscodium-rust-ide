@@ -16,6 +16,20 @@ const StatusBar: React.FC = () => {
     const [modelPickerOpen, setModelPickerOpen] = useState(false);
     const modelPickerRef = useRef<HTMLDivElement>(null);
 
+    const activeTabId = useStore(state => state.activeTabId);
+    const [cursorPosition, setCursorPosition] = useState({ line: 1, column: 1 });
+    useEffect(() => {
+        setCursorPosition({ line: 1, column: 1 });
+    }, [activeTabId]);
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const { line, column } = (e as CustomEvent).detail;
+            setCursorPosition({ line, column });
+        };
+        window.addEventListener('editor:cursor-position', handler);
+        return () => window.removeEventListener('editor:cursor-position', handler as any);
+    }, []);
+
     // Close picker on outside click
     useEffect(() => {
         if (!modelPickerOpen) return;
@@ -201,7 +215,7 @@ const StatusBar: React.FC = () => {
                 <div className="status-item hoverable" style={{ cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center', padding: '0 8px', opacity: 0.9 }}>
                     <i className="codicon codicon-broadcast" style={{ fontFamily: 'codicon', fontStyle: 'normal', fontSize: '12px', marginRight: '6px' }} />Discord RPC
                 </div>
-                <div className="status-item hoverable" style={{ cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center', padding: '0 8px' }}>Ln 1, Col 1</div>
+                <div className="status-item hoverable" style={{ cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center', padding: '0 8px' }}>Ln {cursorPosition.line}, Col {cursorPosition.column}</div>
                 <div className="status-item hoverable" style={{ cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center', padding: '0 8px' }}>Spaces: 4</div>
                 <div className="status-item hoverable" style={{ cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center', padding: '0 8px' }}>UTF-8</div>
 
